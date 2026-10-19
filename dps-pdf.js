@@ -395,6 +395,15 @@ export async function fillDps(PDFLib, pdfBytes, donnees) {
     if (i === e1) cross(p, 68.6, t);
   });
 
+  // E2 : délai d'intervention des secours publics (saisi par l'admin à la validation)
+  const e2 = level(g("e2"), []);
+
+  [346.4, 371.5, 396.6, 421.7].forEach((t, i) => {
+    if (i === e2) cross(p, 68.6, t);
+  });
+
+  put(p, g("centres"), 328, 439, 455, 552);
+
   const act = g("acteurs");
 
   if (yes(act)) {
@@ -532,6 +541,40 @@ export async function fillDps(PDFLib, pdfBytes, donnees) {
 
     put(p, g("comm"), 42, 453, 790, 552, { top: true });
   }
+
+  /* ===== Page 5 — Proposition de dimensionnement (saisie par l'admin) ===== */
+
+  p = pg[4];
+
+  // Remplace le "…" (x 42.5 à 47.7) devant chaque ligne par un nombre.
+  const dn = (val, top, bot) => {
+    const t = clean(val);
+    if (!t) return;
+
+    cover(p, 41, top - 1, 49.6, bot + 1);
+
+    let s = 8.5;
+    while (s > 5 && W(t, s) > 8.6) s -= 0.5;
+
+    p.drawText(t, {
+      x: 41,
+      y: H - (top + 6.6),
+      size: s,
+      font,
+      color: INK
+    });
+  };
+
+  dn(g("dimTotal"), 616.8, 625.8);
+  dn(g("dimPoste"), 635.3, 644.3);
+  dn(g("dimInterv"), 653.8, 662.8);
+  dn(g("dimBinome"), 672.3, 681.3);
+  dn(g("dimEncad"), 690.8, 699.8);
+  dn(g("dimVehic"), 709.3, 718.3);
+
+  put(p, g("dimIntervType"), 276, 653.3, 663.3, 552);
+  put(p, g("dimBinomeType"), 320, 671.8, 681.8, 552);
+  put(p, g("dimJust"), 104, 744.3, 812, 552, { top: true });
 
   const unused = R.unused();
 

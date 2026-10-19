@@ -96,15 +96,50 @@ if(b.dataset.a==="del"&&confirm(`Supprimer définitivement la demande ${id} ?`+(
 try{await deleteDoc(doc(db,COL,id));toast("Demande supprimée")}catch(e){toast("Suppression impossible : "+e.code)}}
 if(b.dataset.a==="view")modal(r)}
 
+const E2=[["0,25","Moins de 10 minutes"],["0,30","Entre 10 et 20 minutes"],["0,35","Entre 20 et 30 minutes"],["0,40","Plus de 30 minutes (poste de 4 intervenants minimum)"]];
+const DIMK=["centres","dimTotal","dimPoste","dimInterv","dimIntervType","dimBinome","dimBinomeType","dimEncad","dimVehic","dimJust"];
+const DIML=[["Délai d'intervention des secours publics (E2)",d=>(E2.find(x=>x[0]===d.e2)||[])[1]?`${E2.find(x=>x[0]===d.e2)[1]} (${d.e2})`:"—"],["Centre de secours et SAMU les plus proches",d=>d.centres],["Intervenants secouristes (total)",d=>d.dimTotal],["Poste de secours",d=>d.dimPoste],["Équipe d'intervention",d=>[d.dimInterv,d.dimIntervType].filter(Boolean).join(" · ")],["Binôme",d=>[d.dimBinome,d.dimBinomeType].filter(Boolean).join(" · ")],["Équipe d'encadrement",d=>d.dimEncad],["Véhicule d'évacuation",d=>d.dimVehic],["Justification",d=>d.dimJust]];
+const dimRecap=d=>d?`<div class="rec"><h3>Dimensionnement (Croix-Rouge)</h3><dl>${DIML.map(l=>`<dt>${esc(l[0])}</dt><dd>${esc(l[1](d)||"—")}</dd>`).join("")}</dl></div>`:"";
+// Données envoyées au PDF : réponses de l'organisateur + saisie de l'admin
+const pdfData=r=>({...r.donnees,...(r.dimensionnement||{})});
+
 function modal(r){
-const o=document.createElement("div");o.className="mod";const ok=r.statut==="validee";
-o.innerHTML=`<div><h1>${esc(r.donnees.nom)}</h1><p class="mu">Demande ${esc(r.id)}, envoyée le ${fdate(r.rempliLe)} <span class="badge ${ok?"ok":"r"}">${ok?"Validée le "+fdate(r.valideeLe):"À valider"}</span></p>${recap(r.donnees)}
-<div class="bt"><button class="btn" id="cl">Fermer</button>${ok?'<button class="btn" id="pdf">Ouvrir le PDF</button>':'<button class="btn ok" id="vl">Valider la demande</button>'}</div></div>`;
-document.body.append(o);o.onclick=e=>e.target===o&&o.remove();$("#cl").onclick=()=>o.remove();
+const o=document.createElement("div");o.className="mod";document.body.append(o);
+o.onclick=e=>e.target===o&&o.remove();
 // Le nouvel onglet doit être ouvert tout de suite au clic (sinon le navigateur bloque la pop-up)
-const pdf=async w=>{try{await openDpsPdf(r.donnees,w,r.id)}catch(e){console.error(e);toast("PDF impossible : "+(e.message||e))}};
+const pdf=async w=>{try{await openDpsPdf(pdfData(r),w,r.id)}catch(e){console.error(e);toast("PDF impossible : "+(e.message||e))}};
+
+const show=()=>{const ok=r.statut==="validee";
+o.innerHTML=`<div><h1>${esc(r.donnees.nom)}</h1><p class="mu">Demande ${esc(r.id)}, envoyée le ${fdate(r.rempliLe)} <span class="badge ${ok?"ok":"r"}">${ok?"Validée le "+fdate(r.valideeLe):"À valider"}</span></p>${recap(r.donnees)}${ok?dimRecap(r.dimensionnement):""}
+<div class="bt"><button class="btn" id="cl">Fermer</button>${ok?'<button class="btn" id="ed">Modifier le dimensionnement</button><button class="btn" id="pdf">Ouvrir le PDF</button>':'<button class="btn ok" id="vl">Valider la demande</button>'}</div></div>`;
+$("#cl").onclick=()=>o.remove();
 $("#pdf")&&($("#pdf").onclick=()=>pdf(window.open("","_blank")));
-$("#vl")&&($("#vl").onclick=async()=>{const w=window.open("","_blank");
-try{await updateDoc(doc(db,COL,r.id),{statut:"validee",valideeLe:serverTimestamp(),valideePar:auth.currentUser.email});toast("Demande validée")}catch(e){w?.close();toast("Validation impossible : "+e.code);return}
-await pdf(w);o.remove()})}
+$("#ed")&&($("#ed").onclick=form);
+$("#vl")&&($("#vl").onclick=form)};
+
+const form=()=>{const ok=r.statut==="validee",d=r.dimensionnement||{},v=k=>esc(d[k]??"");
+const n=(k,l)=>`<div><label class="l">${l}</label><input type="number" min="0" id="${k}" value="${v(k)}"></div>`;
+const nt=(k,kt,l,ph)=>`<div style="display:grid;grid-template-columns:110px 1fr;gap:12px"><div><label class="l">${l}</label><input type="number" min="0" id="${k}" value="${v(k)}"></div><div><label class="l">Précision</label><input type="text" id="${kt}" value="${v(kt)}" placeholder="${ph}"></div></div>`;
+o.innerHTML=`<div><h1>${ok?"Modifier le dimensionnement":"Valider la demande"}</h1><p class="mu">${esc(r.donnees.nom)} · ${esc(r.id)}. Ces informations seront enregistrées et ajoutées au PDF (page 3 et section 6).</p>
+<h3>Délai d'intervention des secours publics (E2)</h3>
+${E2.map(x=>`<label style="display:block;padding:6px 0;cursor:pointer"><input type="radio" name="e2" value="${x[0]}" ${d.e2===x[0]?"checked":""}> ${x[1]} <span class="mu">(${x[0]})</span></label>`).join("")}
+<div class="fld" style="margin-top:10px"><label class="l">Centre de secours et SAMU les plus proches de l'événement</label><input type="text" id="centres" value="${v("centres")}"></div>
+<h3>Proposition de dimensionnement</h3>
+<div style="display:grid;gap:12px">${n("dimTotal","Intervenants secouristes (total)")}${n("dimPoste","Poste de secours")}
+${nt("dimInterv","dimIntervType","Équipe d'intervention","à pied / en VPSP")}${nt("dimBinome","dimBinomeType","Binôme","à pied, à vélo, nautique, tout terrain…")}
+${n("dimEncad","Équipe d'encadrement")}${n("dimVehic","Véhicule d'évacuation")}
+<div><label class="l">Justification</label><textarea id="dimJust" rows="4">${v("dimJust")}</textarea></div></div>
+<div class="em" id="fe" style="display:block;margin-top:10px"></div>
+<div class="bt"><button class="btn" id="back">Retour</button><button class="btn ok" id="go">${ok?"Enregistrer et ouvrir le PDF":"Valider et ouvrir le PDF"}</button></div></div>`;
+$("#back").onclick=show;
+$("#go").onclick=async()=>{
+const e2=document.querySelector('input[name="e2"]:checked')?.value;
+if(!e2){$("#fe").textContent="Choisissez le délai d'intervention des secours publics (E2).";return}
+const dim={e2};DIMK.forEach(k=>dim[k]=$("#"+k).value.trim());
+const w=window.open("","_blank");
+try{await updateDoc(doc(db,COL,r.id),ok?{dimensionnement:dim}:{statut:"validee",valideeLe:serverTimestamp(),valideePar:auth.currentUser.email,dimensionnement:dim});toast(ok?"Dimensionnement enregistré":"Demande validée")}catch(e){w?.close();toast("Enregistrement impossible : "+e.code);return}
+r={...r,dimensionnement:dim,...(ok?{}:{statut:"validee",valideeLe:Timestamp.now()})};
+await pdf(w);o.remove()}};
+
+show()}
 </script></body></html>
