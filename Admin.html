@@ -29,7 +29,7 @@ const toast=t=>{const e=document.createElement("div");e.className="toast";e.text
 let list=[],filt="all",unsub;
 const status=r=>r.statut==="validee"?"validee":r.utilise?"remplie":r.expireLe?.toMillis()<Date.now()?"expiree":"attente";
 const BADGE={attente:["wa","En attente"],remplie:["r","À valider"],validee:["ok","Validée"],expiree:["","Expirée"]};
-const link=id=>new URL("demande.html?id="+encodeURIComponent(id),location.href).href;
+const link=id=>new URL("Demande.html?id="+encodeURIComponent(id),location.href).href;
 const copy=async t=>{try{await navigator.clipboard.writeText(t);toast("Lien copié")}catch{prompt("Copiez le lien :",t)}};
 
 onAuthStateChanged(auth,u=>{
