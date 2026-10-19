@@ -117,12 +117,12 @@ $("#pdf")&&($("#pdf").onclick=()=>pdf(window.open("","_blank")));
 $("#ed")&&($("#ed").onclick=form);
 $("#vl")&&($("#vl").onclick=form)};
 
-const form=()=>{const ok=r.statut==="validee",d=r.dimensionnement||{},v=k=>esc(d[k]??"");
+const form=()=>{const ok=r.statut==="validee",d=r.dimensionnement||{},v=k=>esc(d[k]??"");let e2=d.e2||"";
 const n=(k,l)=>`<div><label class="l">${l}</label><input type="number" min="0" id="${k}" value="${v(k)}"></div>`;
 const nt=(k,kt,l,ph)=>`<div style="display:grid;grid-template-columns:110px 1fr;gap:12px"><div><label class="l">${l}</label><input type="number" min="0" id="${k}" value="${v(k)}"></div><div><label class="l">Précision</label><input type="text" id="${kt}" value="${v(kt)}" placeholder="${ph}"></div></div>`;
 o.innerHTML=`<div><h1>${ok?"Modifier le dimensionnement":"Valider la demande"}</h1><p class="mu">${esc(r.donnees.nom)} · ${esc(r.id)}. Ces informations seront enregistrées et ajoutées au PDF (page 3 et section 6).</p>
 <h3>Délai d'intervention des secours publics (E2)</h3>
-${E2.map(x=>`<label style="display:block;padding:6px 0;cursor:pointer"><input type="radio" name="e2" value="${x[0]}" ${d.e2===x[0]?"checked":""}> ${x[1]} <span class="mu">(${x[0]})</span></label>`).join("")}
+<div class="tabs" id="e2" style="flex-direction:column;align-items:stretch;margin-bottom:0">${E2.map(x=>`<button type="button" class="btn ${e2===x[0]?"on":""}" data-v="${x[0]}" style="text-align:left">${x[1]} (${x[0]})</button>`).join("")}</div>
 <div class="fld" style="margin-top:10px"><label class="l">Centre de secours et SAMU les plus proches de l'événement</label><input type="text" id="centres" value="${v("centres")}"></div>
 <h3>Proposition de dimensionnement</h3>
 <div style="display:grid;gap:12px">${n("dimTotal","Intervenants secouristes (total)")}${n("dimPoste","Poste de secours")}
@@ -132,8 +132,8 @@ ${n("dimEncad","Équipe d'encadrement")}${n("dimVehic","Véhicule d'évacuation"
 <div class="em" id="fe" style="display:block;margin-top:10px"></div>
 <div class="bt"><button class="btn" id="back">Retour</button><button class="btn ok" id="go">${ok?"Enregistrer et ouvrir le PDF":"Valider et ouvrir le PDF"}</button></div></div>`;
 $("#back").onclick=show;
+$("#e2").onclick=ev=>{const b=ev.target.closest("[data-v]");if(!b)return;e2=b.dataset.v;document.querySelectorAll("#e2 [data-v]").forEach(x=>x.classList.toggle("on",x.dataset.v===e2));$("#fe").textContent=""};
 $("#go").onclick=async()=>{
-const e2=document.querySelector('input[name="e2"]:checked')?.value;
 if(!e2){$("#fe").textContent="Choisissez le délai d'intervention des secours publics (E2).";return}
 const dim={e2};DIMK.forEach(k=>dim[k]=$("#"+k).value.trim());
 const w=window.open("","_blank");
