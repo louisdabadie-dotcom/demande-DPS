@@ -46,7 +46,15 @@ m.innerHTML=`<div class="card" style="max-width:400px;margin:40px auto"><h1>Espa
 <div class="fld"><label class="l">Mot de passe</label><input type="password" id="pw" autocomplete="current-password"></div>
 <button class="btn p" id="si" style="width:100%">Se connecter</button><div class="em" id="le" style="display:block;margin-top:10px"></div></div>`;
 const go=async()=>{try{await signInWithEmailAndPassword(auth,$("#em").value.trim(),$("#pw").value)}catch{$("#le").textContent="Identifiants incorrects."}};
-$("#si").onclick=go;$("#pw").onkeydown=e=>e.key==="Enter"&&go()}
+$("#si").onclick = go;
+
+$("#pw").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        go();
+    }
+});
+}
 
 function dash(){
 m.innerHTML=`<div id="st" class="stats"></div>
