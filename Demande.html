@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demande de dispositif prévisionnel de secours</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css"></head>
+<body><div id="h"></div><main id="m"></main>
+<script type="module">
+import{db,COL,esc,norm,header,steps,vis,recap,fdate}from"./common.js";
+import{doc,getDoc,updateDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const $=s=>document.querySelector(s),m=$("#m");
+$("#h").innerHTML=header('<span class="ti">Demande de dispositif prévisionnel de secours</span>');
+const id=new URLSearchParams(location.search).get("id")?.trim(),KEY="dps_"+id;
+let ref,meta,d={},cur="org";
+const state=(ic,t,p,c="")=>{m.innerHTML=`<div class="card state"><div class="ic ${c}">${ic}</div><h2>${t}</h2><p class="mu">${p}</p></div>`;scrollTo(0,0)};
+const toast=t=>{const e=document.createElement("div");e.className="toast";e.textContent=t;document.body.append(e);setTimeout(()=>e.remove(),3200)};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify({d,cur}))}catch{}};
+
+(async()=>{
+m.innerHTML='<div class="spin"></div>';
+if(!id)return state("!","Lien incomplet","Il manque le numéro de demande. Utilisez le lien transmis par la Croix-Rouge.");
+try{
+ref=doc(db,COL,id);const s=await getDoc(ref);
+if(!s.exists())return state("?","Demande introuvable","Aucune demande ne correspond à ce numéro. Vérifiez le lien reçu ou contactez la Croix-Rouge.");
+meta=s.data();
+if(meta.utilise)return state("✓","Demande déjà transmise",`Ce formulaire a été envoyé le ${fdate(meta.rempliLe)}. Pour modifier une information, contactez la Croix-Rouge.`,"ok");
+if(meta.expireLe.toMillis()<Date.now())return state("⏱","Lien expiré",`Ce lien n'est plus valide depuis le ${fdate(meta.expireLe)}. Demandez-en un nouveau à la Croix-Rouge.`);
+}catch(e){return state("!","Connexion impossible","Vérifiez votre connexion et rechargez la page.")}
+try{const x=JSON.parse(localStorage.getItem(KEY));if(x){d=x.d||{};cur=x.cur||"org"}}catch{}
+welcome()})();
+
+function welcome(){
+m.innerHTML=`<div class="card"><h1>Demande de dispositif prévisionnel de secours</h1><p class="mu">Demande n° ${esc(id)}${meta.libelle?", "+esc(meta.libelle):""}</p>
+<p>Ce questionnaire permet à la Croix-Rouge française de dimensionner le dispositif de secours de votre manifestation, puis de vous proposer un devis.</p>
+<ul><li>Prévoyez environ 10 minutes. Toutes les informations sont à renseigner, le plus précisément possible.</li><li>Le nombre d'étapes s'adapte à vos réponses.</li><li>Si vous quittez la page, vos réponses sont conservées sur cet appareil.</li><li>Le formulaire ne peut être envoyé qu'une fois. Ce lien est valable jusqu'au ${fdate(meta.expireLe)}.</li></ul>
+<button class="btn p" id="go">${Object.keys(d).length?"Reprendre ma saisie":"Commencer"}</button></div>`;
+$("#go").onclick=()=>render(1)}
+
+function fld(f){const v=d[f.k],n=f.k;let h;
+if(f.t==="radio")h=`<div class="opts ${f.row?"row":""}">${f.o.map(norm).map(o=>`<label class="opt ${v===o[0]?"on":""}"><input type="radio" name="${n}" value="${esc(o[0])}" ${v===o[0]?"checked":""}><b>${esc(o[1])}</b>${o[2]?`<small>${esc(o[2])}</small>`:""}</label>`).join("")}</div>`;
+else if(f.t==="check")h=`<div class="opts">${f.o.map(o=>`<label class="opt ${v?.includes(o)?"on":""}"><input type="checkbox" data-m="${n}" value="${esc(o)}" ${v?.includes(o)?"checked":""}><b>${esc(o)}</b></label>`).join("")}</div>`;
+else if(f.t==="ack")return`<div class="fld full" data-k="${n}"><label class="opt ${v?"on":""}"><input type="checkbox" name="${n}" data-a="1" ${v?"checked":""}><b>${esc(f.l)}</b></label><div class="em">Cochez cette case pour envoyer la demande.</div></div>`;
+else if(f.t==="select")h=`<select name="${n}"><option value="">Sélectionnez…</option>${f.o.map(o=>`<option ${v===o?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+else if(f.t==="textarea")h=`<textarea name="${n}">${esc(v)}</textarea>`;
+else h=`<input type="${f.t||"text"}" name="${n}" value="${esc(v)}" ${f.t==="number"?'min="0" inputmode="numeric"':""}>`;
+return`<div class="fld ${f.full?"full":""}" data-k="${n}"><label class="l">${esc(f.l)}${f.opt?' <span class="mu" style="font-weight:400">(facultatif)</span>':""}</label>${h}${f.h?`<div class="h">${esc(f.h)}</div>`:""}<div class="em">Ce champ est obligatoire.</div></div>`}
+
+function render(go){
+const L=steps(d),i=Math.max(0,L.findIndex(s=>s.id===cur)),s=L[i],left=L.length-i-1,last=i===L.length-1;cur=s.id;
+m.innerHTML=`<div class="prog"><span><b>Étape ${i+1} sur ${L.length}</b>, ${left?left+" restante"+(left>1?"s":""):"dernière étape"}</span><span>${esc(id)}</span></div>
+<div class="bar"><i style="width:${(i+1)/L.length*100}%"></i></div>
+<div class="card" style="margin-top:14px"><h1>${esc(s.t)}</h1>${last?`<p class="mu">Relisez votre demande, puis signez-la.</p>${recap(d)}<div style="height:20px"></div>`:""}<div class="grid">${vis(s,d).map(fld).join("")}</div></div>
+<div class="nav"><button class="btn" id="pv" ${i?"":"disabled"}>Retour</button><button class="btn p" id="nx">${last?"Envoyer la demande":"Continuer"}</button></div>`;
+save();if(go)scrollTo({top:0})}
+
+m.addEventListener("input",e=>{const t=e.target;if(!t.name||t.type==="radio"||t.type==="checkbox"||t.tagName==="SELECT")return;d[t.name]=t.value;t.closest(".fld")?.classList.remove("err");save()});
+m.addEventListener("change",e=>{const t=e.target;if(!(t.type==="radio"||t.type==="checkbox"||t.tagName==="SELECT"))return;
+let q;if(t.dataset.m){const a=d[t.dataset.m]||[];d[t.dataset.m]=t.checked?[...a,t.value]:a.filter(x=>x!==t.value);q=`[data-m="${t.dataset.m}"][value="${CSS.escape(t.value)}"]`}
+else{d[t.name]=t.dataset.a?t.checked:t.value;q=t.type==="radio"?`[name="${t.name}"][value="${CSS.escape(t.value)}"]`:`[name="${t.name}"]`}
+render();m.querySelector(q)?.focus({preventScroll:true})});
+
+m.addEventListener("click",e=>{const b=e.target.closest("button");if(!b||!b.id||b.id==="go")return;
+const L=steps(d),i=L.findIndex(s=>s.id===cur);
+if(b.id==="pv"&&i>0){cur=L[i-1].id;render(1)}
+if(b.id==="nx"){
+const B=vis(L[i],d).filter(f=>!f.opt&&(f.t==="ack"?!d[f.k]:!String(d[f.k]??"").trim()));
+let msg="";
+if(!B.length){if(cur==="man"&&d.fin<=d.debut)msg="La fin de la manifestation doit être après son début.";
+if(cur==="pub"&&d.acteurs==="non"&&d.public==="non")msg="Au moins un dispositif est nécessaire : acteurs ou public."}
+document.querySelectorAll(".fld.err").forEach(x=>x.classList.remove("err"));
+if(B.length||msg){B.forEach(f=>m.querySelector(`[data-k="${f.k}"]`)?.classList.add("err"));toast(msg||"Complétez les champs signalés en rouge.");m.querySelector(".err")?.scrollIntoView({behavior:"smooth",block:"center"});return}
+if(i<L.length-1){cur=L[i+1].id;render(1)}else submit(b)}});
+
+async function submit(b){b.disabled=true;b.textContent="Envoi en cours…";
+try{await updateDoc(ref,{utilise:true,statut:"remplie",rempliLe:serverTimestamp(),donnees:d});
+try{localStorage.removeItem(KEY)}catch{}
+state("✓","Demande envoyée","Merci ! La Croix-Rouge étudie votre dossier et vous proposera un devis. Vous pouvez fermer cette page.","ok")}
+catch(e){b.disabled=false;b.textContent="Envoyer la demande";toast("Envoi impossible : le lien a déjà été utilisé, a expiré, ou la connexion a été perdue.")}}
+</script></body></html>

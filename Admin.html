@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administration des demandes de DPS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="common.css">
+<style>
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:#fff;border:1px solid var(--ln);border-radius:12px;padding:14px 16px;border-left:4px solid var(--ln)}
+.stat b{font-size:26px;display:block;line-height:1.1}.stat.r{border-left-color:var(--r)}.stat.o{border-left-color:var(--ok)}
+.create{display:grid;grid-template-columns:1fr 160px auto;gap:12px;align-items:end}
+@media(max-width:700px){.create{grid-template-columns:1fr}}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tabs .btn.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.row{display:grid;grid-template-columns:1.2fr 1.5fr 1fr auto;gap:12px;align-items:center;padding:12px 4px;border-top:1px solid var(--ln)}
+.row:first-child{border-top:0}.row .act{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:800px){.row{grid-template-columns:1fr 1fr}.row .act{grid-column:1/-1;justify-content:flex-start}}
+.mod{position:fixed;inset:0;background:#0007;display:grid;place-items:center;z-index:30;padding:14px}
+.mod>div{background:#fff;border-radius:14px;max-width:760px;width:100%;max-height:92vh;overflow:auto;padding:24px}
+.mod .bt{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+code{background:var(--bg);padding:1px 6px;border-radius:5px;font-size:13px}
+</style></head>
+<body><div id="h"></div><main class="wide" id="m"></main>
+<script type="module">
+import{app,db,COL,esc,fdate,header,recap}from"./common.js";
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp,Timestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const $=s=>document.querySelector(s),m=$("#m"),auth=getAuth(app);
+const toast=t=>{const e=document.createElement("div");e.className="toast";e.textContent=t;document.body.append(e);setTimeout(()=>e.remove(),2800)};
+let list=[],filt="all",unsub;
+const status=r=>r.statut==="validee"?"validee":r.utilise?"remplie":r.expireLe?.toMillis()<Date.now()?"expiree":"attente";
+const BADGE={attente:["wa","En attente"],remplie:["r","À valider"],validee:["ok","Validée"],expiree:["","Expirée"]};
+const link=id=>new URL("demande.html?id="+encodeURIComponent(id),location.href).href;
+const copy=async t=>{try{await navigator.clipboard.writeText(t);toast("Lien copié")}catch{prompt("Copiez le lien :",t)}};
+
+onAuthStateChanged(auth,u=>{
+unsub?.();
+$("#h").innerHTML=header(u?`<span class="ti">${esc(u.email)}</span><button class="btn sm" id="out">Se déconnecter</button>`:"");
+if(!u)return login();
+$("#out").onclick=()=>signOut(auth);
+dash();
+unsub=onSnapshot(query(collection(db,COL),orderBy("creeLe","desc")),s=>{list=s.docs.map(x=>({id:x.id,...x.data()}));draw()},e=>toast("Lecture impossible : "+e.code))});
+
+function login(){
+m.innerHTML=`<div class="card" style="max-width:400px;margin:40px auto"><h1>Espace administration</h1><p class="mu">Connectez-vous pour gérer les demandes de DPS.</p>
+<div class="fld"><label class="l">Adresse e-mail</label><input type="email" id="em" autocomplete="username"></div>
+<div class="fld"><label class="l">Mot de passe</label><input type="password" id="pw" autocomplete="current-password"></div>
+<button class="btn p" id="si" style="width:100%">Se connecter</button><div class="em" id="le" style="display:block;margin-top:10px"></div></div>`;
+const go=async()=>{try{await signInWithEmailAndPassword(auth,$("#em").value.trim(),$("#pw").value)}catch{$("#le").textContent="Identifiants incorrects."}};
+$("#si").onclick=go;$("#pw").onkeydown=e=>e.key==="Enter"&&go()}
+
+function dash(){
+m.innerHTML=`<div id="st" class="stats"></div>
+<div class="card"><h2>Nouvelle demande</h2><p class="mu" style="margin-top:0">Un numéro unique et un lien à envoyer à l'organisateur sont créés.</p>
+<div class="create"><div><label class="l">Référence ou organisateur (facultatif)</label><input type="text" id="lb" placeholder="Ex : Fête de la musique, mairie de…"></div>
+<div><label class="l">Validité du lien</label><select id="va"><option value="7">7 jours</option><option value="15">15 jours</option><option value="30" selected>30 jours</option><option value="60">60 jours</option><option value="90">90 jours</option></select></div>
+<button class="btn p" id="cr">Créer la demande</button></div><div id="nw"></div></div>
+<div class="card"><div class="tabs" id="tb"></div><div id="ls"></div></div>`;
+$("#cr").onclick=create;
+$("#tb").onclick=e=>{const b=e.target.closest("[data-f]");if(b){filt=b.dataset.f;draw()}};
+$("#ls").onclick=act}
+
+async function create(){
+const b=$("#cr");b.disabled=true;
+try{const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let id;
+do{id="DPS-"+new Date().getFullYear()+"-"+Array.from(crypto.getRandomValues(new Uint8Array(5)),x=>A[x%A.length]).join("")}while((await getDoc(doc(db,COL,id))).exists());
+await setDoc(doc(db,COL,id),{libelle:$("#lb").value.trim(),creeLe:serverTimestamp(),expireLe:Timestamp.fromMillis(Date.now()+$("#va").value*864e5),utilise:false,statut:"attente",donnees:null,creePar:auth.currentUser.email});
+$("#lb").value="";const l=link(id);
+$("#nw").innerHTML=`<div class="card" style="background:var(--okl);border-color:#bfe3c9;margin:16px 0 0"><b>Demande ${id} créée.</b><div style="margin:8px 0;word-break:break-all"><code>${esc(l)}</code></div><button class="btn sm" id="cp">Copier le lien</button></div>`;
+$("#cp").onclick=()=>copy(l);copy(l)}
+catch(e){toast("Création impossible : "+(e.code||e.message))}
+b.disabled=false}
+
+function draw(){
+const c={all:list.length};list.forEach(r=>c[status(r)]=(c[status(r)]||0)+1);
+$("#st").innerHTML=`<div class="stat"><b>${c.all}</b>Demandes</div><div class="stat"><b>${c.attente||0}</b>En attente de réponse</div><div class="stat r"><b>${c.remplie||0}</b>À valider</div><div class="stat o"><b>${c.validee||0}</b>Validées</div>`;
+const T=[["all","Toutes"],["attente","En attente"],["remplie","À valider"],["validee","Validées"],["expiree","Expirées"]];
+$("#tb").innerHTML=T.map(t=>`<button class="btn sm ${filt===t[0]?"on":""}" data-f="${t[0]}">${t[1]} (${c[t[0]]||0})</button>`).join("");
+const L=list.filter(r=>filt==="all"||status(r)===filt);
+$("#ls").innerHTML=L.length?L.map(r=>{const s=status(r),bd=BADGE[s];return`<div class="row" data-id="${esc(r.id)}"><div><b>${esc(r.id)}</b><div class="mu" style="font-size:13px">Créée le ${fdate(r.creeLe)}</div></div>
+<div>${esc(r.donnees?.nom||r.libelle||"Sans référence")}${r.donnees?`<div class="mu" style="font-size:13px">${esc(r.donnees.raison)}</div>`:""}</div>
+<div><span class="badge ${bd[0]}">${bd[1]}</span><div class="mu" style="font-size:12.5px">${r.utilise?"Remplie le "+fdate(r.rempliLe):s==="expiree"?"Expirée le "+fdate(r.expireLe):"Valable jusqu'au "+fdate(r.expireLe)}</div></div>
+<div class="act">${r.utilise?`<button class="btn sm p" data-a="view">Voir la demande</button>`:`<button class="btn sm" data-a="copy">Copier le lien</button>`}<button class="btn sm d" data-a="del">Supprimer</button></div></div>`}).join(""):'<p class="mu" style="text-align:center;padding:24px">Aucune demande dans cette catégorie.</p>'}
+
+async function act(e){const b=e.target.closest("[data-a]");if(!b)return;const id=b.closest(".row").dataset.id,r=list.find(x=>x.id===id);
+if(b.dataset.a==="copy")copy(link(id));
+if(b.dataset.a==="del"&&confirm(`Supprimer définitivement la demande ${id} ?`+(r.utilise?" Les réponses de l'organisateur seront perdues.":" Son lien cessera de fonctionner."))){
+try{await deleteDoc(doc(db,COL,id));toast("Demande supprimée")}catch(e){toast("Suppression impossible : "+e.code)}}
+if(b.dataset.a==="view")modal(r)}
+
+function modal(r){
+const o=document.createElement("div");o.className="mod";const ok=r.statut==="validee";
+o.innerHTML=`<div><h1>${esc(r.donnees.nom)}</h1><p class="mu">Demande ${esc(r.id)}, envoyée le ${fdate(r.rempliLe)} <span class="badge ${ok?"ok":"r"}">${ok?"Validée le "+fdate(r.valideeLe):"À valider"}</span></p>${recap(r.donnees)}
+<div class="bt"><button class="btn" id="cl">Fermer</button>${ok?"":'<button class="btn ok" id="vl">Valider la demande</button>'}</div></div>`;
+document.body.append(o);o.onclick=e=>e.target===o&&o.remove();$("#cl").onclick=()=>o.remove();
+$("#vl")&&($("#vl").onclick=async()=>{try{await updateDoc(doc(db,COL,r.id),{statut:"validee",valideeLe:serverTimestamp(),valideePar:auth.currentUser.email});toast("Demande validée");o.remove()}catch(e){toast("Validation impossible : "+e.code)}})}
+</script></body></html>

@@ -1,0 +1,50 @@
+:root{--r:#e30613;--rd:#b30510;--rl:#fdecee;--ink:#1c1f23;--mu:#667085;--bg:#f4f5f7;--ln:#e3e6ea;--ok:#157f3b;--okl:#e6f4ea;--wa:#a15c00;--wal:#fff3dc}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.55 Poppins,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg)}
+header{background:#fff;border-bottom:3px solid var(--r);padding:12px 22px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:5}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;line-height:1.1;font-size:15px}
+.logo svg{width:34px;height:34px}
+header .sp{flex:1}
+header .ti{color:var(--mu);font-size:13px}
+main{max-width:760px;margin:0 auto;padding:28px 18px 80px}
+main.wide{max-width:1040px}
+h1{font-size:26px;line-height:1.25;margin:0 0 6px}
+h2{font-size:20px;margin:0 0 4px}
+p.mu,.mu{color:var(--mu)}
+.card{background:#fff;border:1px solid var(--ln);border-radius:12px;padding:24px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:620px){.grid{grid-template-columns:1fr}main{padding:18px 12px 70px}.card{padding:18px}}
+.fld{margin-bottom:16px}.fld.full{grid-column:1/-1}
+label.l{display:block;font-weight:600;font-size:14px;margin-bottom:5px}
+.h{font-size:12.5px;color:var(--mu);margin-top:4px}
+input[type=text],input[type=tel],input[type=email],input[type=number],input[type=password],input[type=datetime-local],select,textarea{width:100%;font:inherit;padding:10px 12px;border:1.5px solid var(--ln);border-radius:8px;background:#fff;color:inherit}
+textarea{min-height:84px;resize:vertical}
+input:focus,select:focus,textarea:focus,.btn:focus-visible,.opt:focus-within{outline:3px solid #e3061333;border-color:var(--r)}
+.err input,.err select,.err textarea{border-color:var(--r);background:var(--rl)}
+.err .opts{outline:2px solid var(--r);outline-offset:3px;border-radius:10px}
+.em{color:var(--rd);font-size:12.5px;margin-top:4px;display:none}.err .em{display:block}
+.opts{display:grid;gap:8px}.opts.row{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.opt{position:relative;display:block;border:1.5px solid var(--ln);border-radius:10px;padding:10px 14px;cursor:pointer;background:#fff;transition:border-color .15s,background .15s}
+.opt:hover{border-color:#c9ced6}.opt.on{border-color:var(--r);background:var(--rl)}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt b{font-weight:600;display:block}.opt small{color:var(--mu);display:block;font-size:12.5px}
+.btn{font:inherit;font-weight:600;border:1.5px solid var(--ln);background:#fff;color:var(--ink);padding:10px 20px;border-radius:999px;cursor:pointer;transition:background .15s,border-color .15s}
+.btn:hover{border-color:#b9bfc9}.btn.p{background:var(--r);border-color:var(--r);color:#fff}.btn.p:hover{background:var(--rd)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}.btn.sm{padding:6px 14px;font-size:13px}.btn.d{color:var(--rd)}
+.btn:disabled{opacity:.55;cursor:wait}
+.bar{height:8px;background:var(--ln);border-radius:9px;overflow:hidden;margin:10px 0 4px}
+.bar i{display:block;height:100%;background:var(--r);border-radius:9px;transition:width .35s}
+.prog{display:flex;justify-content:space-between;font-size:13px;color:var(--mu);gap:10px}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:8px}
+.badge{display:inline-block;font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;background:var(--bg);color:var(--mu)}
+.badge.ok{background:var(--okl);color:var(--ok)}.badge.wa{background:var(--wal);color:var(--wa)}.badge.r{background:var(--rl);color:var(--rd)}
+.rec h3{font-size:14px;margin:18px 0 6px;color:var(--rd);border-bottom:1px solid var(--ln);padding-bottom:4px}
+.rec dl{display:grid;grid-template-columns:minmax(120px,38%) 1fr;gap:6px 14px;margin:0;font-size:14px}
+.rec dt{color:var(--mu)}.rec dd{margin:0;white-space:pre-wrap;word-break:break-word}
+.state{text-align:center;padding:48px 20px}
+.state .ic{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;font-size:30px;background:var(--rl);color:var(--r)}
+.state .ic.ok{background:var(--okl);color:var(--ok)}
+.spin{width:34px;height:34px;border:4px solid var(--ln);border-top-color:var(--r);border-radius:50%;margin:40px auto;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:999px;font-size:14px;z-index:20;max-width:90%}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation-duration:2s!important}}
