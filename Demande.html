@@ -51,7 +51,6 @@ m.innerHTML=`<div class="prog"><span><b>Étape ${i+1} sur ${L.length}</b>, ${lef
 <div class="card" style="margin-top:14px"><h1>${esc(s.t)}</h1>${last?`<p class="mu">Relisez votre demande, puis signez-la.</p>${recap(d)}<div style="height:20px"></div>`:""}<div class="grid">${vis(s,d).map(fld).join("")}</div></div>
 <div class="nav"><button class="btn" id="pv" ${i?"":"disabled"}>Retour</button><button class="btn p" id="nx">${last?"Envoyer la demande":"Continuer"}</button></div>`;
 save();if(go)scrollTo({top:0})}
-
 m.addEventListener("input",e=>{const t=e.target;if(!t.name||t.type==="radio"||t.type==="checkbox"||t.tagName==="SELECT")return;d[t.name]=t.value;t.closest(".fld")?.classList.remove("err");save()});
 m.addEventListener("change",e=>{const t=e.target;if(!(t.type==="radio"||t.type==="checkbox"||t.tagName==="SELECT"))return;
 let q;if(t.dataset.m){const a=d[t.dataset.m]||[];d[t.dataset.m]=t.checked?[...a,t.value]:a.filter(x=>x!==t.value);q=`[data-m="${t.dataset.m}"][value="${CSS.escape(t.value)}"]`}
