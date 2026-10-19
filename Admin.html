@@ -22,6 +22,7 @@ code{background:var(--bg);padding:1px 6px;border-radius:5px;font-size:13px}
 <body><div id="h"></div><main class="wide" id="m"></main>
 <script type="module">
 import{app,db,COL,esc,fdate,header,recap}from"./common.js";
+import{openDpsPdf}from"./dps-pdf.js";
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import{collection,doc,getDoc,setDoc,updateDoc,deleteDoc,onSnapshot,query,orderBy,serverTimestamp,Timestamp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const $=s=>document.querySelector(s),m=$("#m"),auth=getAuth(app);
@@ -98,7 +99,12 @@ if(b.dataset.a==="view")modal(r)}
 function modal(r){
 const o=document.createElement("div");o.className="mod";const ok=r.statut==="validee";
 o.innerHTML=`<div><h1>${esc(r.donnees.nom)}</h1><p class="mu">Demande ${esc(r.id)}, envoyée le ${fdate(r.rempliLe)} <span class="badge ${ok?"ok":"r"}">${ok?"Validée le "+fdate(r.valideeLe):"À valider"}</span></p>${recap(r.donnees)}
-<div class="bt"><button class="btn" id="cl">Fermer</button>${ok?"":'<button class="btn ok" id="vl">Valider la demande</button>'}</div></div>`;
+<div class="bt"><button class="btn" id="cl">Fermer</button>${ok?'<button class="btn" id="pdf">Ouvrir le PDF</button>':'<button class="btn ok" id="vl">Valider la demande</button>'}</div></div>`;
 document.body.append(o);o.onclick=e=>e.target===o&&o.remove();$("#cl").onclick=()=>o.remove();
-$("#vl")&&($("#vl").onclick=async()=>{try{await updateDoc(doc(db,COL,r.id),{statut:"validee",valideeLe:serverTimestamp(),valideePar:auth.currentUser.email});toast("Demande validée");o.remove()}catch(e){toast("Validation impossible : "+e.code)}})}
+// Le nouvel onglet doit être ouvert tout de suite au clic (sinon le navigateur bloque la pop-up)
+const pdf=async w=>{try{await openDpsPdf(r.donnees,w,r.id)}catch(e){console.error(e);toast("PDF impossible : "+(e.message||e))}};
+$("#pdf")&&($("#pdf").onclick=()=>pdf(window.open("","_blank")));
+$("#vl")&&($("#vl").onclick=async()=>{const w=window.open("","_blank");
+try{await updateDoc(doc(db,COL,r.id),{statut:"validee",valideeLe:serverTimestamp(),valideePar:auth.currentUser.email});toast("Demande validée")}catch(e){w?.close();toast("Validation impossible : "+e.code);return}
+await pdf(w);o.remove()})}
 </script></body></html>
